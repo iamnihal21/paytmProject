@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Paytm Pay — icon generator</title>
+<style>
+  body{ font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+        background:#0b1220; color:#e5e7eb; margin:0; min-height:100vh;
+        display:grid; place-items:center; text-align:center; padding:24px; }
+  canvas{ width:220px; height:220px; border-radius:26px;
+          box-shadow:0 20px 50px rgba(0,0,0,.6); }
+  h1{ font-size:16px; font-weight:600; margin:22px 0 6px; }
+  p{ font-size:13px; color:#9ca3af; margin:0 0 18px; }
+  code{ background:#1e293b; padding:2px 6px; border-radius:5px; font-size:12px; }
+  button{ padding:13px 22px; border:none; border-radius:11px;
+          background:#00baf2; color:#002970; font-weight:700;
+          font-size:14px; cursor:pointer; }
+  button:active{ transform:scale(.98); }
+</style>
+</head>
+<body>
+<div>
+  <canvas id="c"></canvas>
+  <h1>Paytm Pay icon</h1>
+  <p>Downloads <code>icon-512.png</code> and <code>icon-192.png</code> into your Downloads folder.</p>
+  <button id="go">Download both icons</button>
+</div>
+<script>
+const c   = document.getElementById("c");
+const ctx = c.getContext("2d");
+
+function draw(size){
+  c.width = c.height = size;
+  const r = size * 0.22;
+
+  /* navy rounded square */
+  ctx.fillStyle = "#002970";
+  ctx.beginPath();
+  if (ctx.roundRect){
+    ctx.roundRect(0, 0, size, size, r);
+  } else {
+    ctx.moveTo(r, 0);
+    ctx.arcTo(size, 0, size, size, r);
+    ctx.arcTo(size, size, 0, size, r);
+    ctx.arcTo(0, size, 0, 0, r);
+    ctx.arcTo(0, 0, size, 0, r);
+    ctx.closePath();
+  }
+  ctx.fill();
+
+  /* cyan accent circle */
+  ctx.fillStyle = "rgba(0,186,242,.20)";
+  ctx.beginPath();
+  ctx.arc(size * 0.80, size * 0.20, size * 0.34, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* letter P */
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `700 ${size * 0.50}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("P", size * 0.5, size * 0.53);
+}
+
+function download(size){
+  draw(size);
+  const a = document.createElement("a");
+  a.download = `icon-${size}.png`;
+  a.href = c.toDataURL("image/png");
+  a.click();
+}
+
+document.getElementById("go").addEventListener("click", () => {
+  download(512);
+  setTimeout(() => download(192), 450);
+});
+
+draw(512);
+</script>
+</body>
+</html>

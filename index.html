@@ -1,73 +1,302 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <meta name="theme-color" content="#002970" />
-  <title>Paytm Pay</title>
-  <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#002970" />
+    <meta name="description" content="Academic prototype of a UPI-based digital payments platform." />
+    <title>Paytm Pay</title>
+
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Paytm Pay" />
+
+    <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
-<div class="phone">
+    <div class="phone">
 
-  <!-- ============ SCREEN 1: LOGIN ============ -->
-  <section id="screen-login" class="screen active">
-    <div class="login-wrap">
-      <div class="brand">
-        <div class="brand-mark">P</div>
-        <h1>Paytm Pay</h1>
-        <p>Digital Payments · Prototype</p>
-      </div>
+        <!-- ============ SCREEN 1: LOGIN ============ -->
+        <section id="screen-login" class="screen active">
+            <div class="login-wrap">
+                <div class="brand">
+                    <div class="brand-mark">P</div>
+                    <h1>Paytm Pay</h1>
+                    <p>Digital Payments · Prototype</p>
+                </div>
 
-      <label class="field-label" for="phone">Mobile number</label>
-      <div class="phone-row">
-        <span class="prefix">+91</span>
-        <input id="phone" type="tel" inputmode="numeric" maxlength="10"
-               placeholder="10-digit number" autocomplete="tel" />
-      </div>
+                <label class="field-label" for="phone">Mobile number</label>
+                <div class="phone-row">
+                    <span class="prefix">+91</span>
+                    <input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number"
+                        autocomplete="tel" />
+                </div>
 
-      <p id="loginError" class="error"></p>
+                <p id="loginError" class="error"></p>
 
-      <button id="loginBtn" class="btn-primary">Continue</button>
+                <button id="loginBtn" class="btn-primary">Continue</button>
 
-      <div class="demo-box">
-        <p class="demo-title">Demo accounts — tap to fill</p>
-        <button class="chip" data-phone="9876543210">9876543210 · Rahul</button>
-        <button class="chip" data-phone="9876543211">9876543211 · Priya</button>
-        <button class="chip" data-phone="9876543212">9876543212 · Amit</button>
-      </div>
+                <div class="demo-box">
+                    <p class="demo-title">Demo accounts — tap to fill</p>
+                    <button class="chip" data-phone="9876543210">9876543210 · Rahul</button>
+                    <button class="chip" data-phone="9876543211">9876543211 · Priya</button>
+                    <button class="chip" data-phone="9876543212">9876543212 · Amit</button>
+                </div>
+            </div>
+            <p class="footnote">Academic prototype · no real payments are processed</p>
+        </section>
+
+        <!-- ============ SCREEN 2: OTP ============ -->
+        <section id="screen-otp" class="screen">
+            <header class="topbar">
+                <button class="back" id="otpBack" aria-label="Back">&#8592;</button>
+                <h2>Verify OTP</h2>
+            </header>
+
+            <div class="otp-wrap">
+                <p class="muted">We sent a 6-digit code to</p>
+                <p id="otpPhone" class="phone-display">+91 ••••••••••</p>
+
+                <div class="demo-otp">
+                    <span>Demo OTP</span>
+                    <strong id="demoOtp">------</strong>
+                </div>
+
+                <div class="otp-row">
+                    <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+                    <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+                    <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+                    <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+                    <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+                    <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+                </div>
+
+                <button id="verifyBtn" class="btn-primary">Verify &amp; Continue</button>
+                <p id="otpMsg" class="error"></p>
+
+                <button id="resendBtn" class="btn-ghost" disabled>Resend OTP in 30s</button>
+
+                <p class="hint">This prototype has no SMS gateway, so the code is shown
+                    above. A production build would send it via an SMS provider.</p>
+            </div>
+        </section>
+
+        <!-- ============ SCREEN 3: HOME ============ -->
+        <section id="screen-home" class="screen">
+            <header class="home-head">
+                <div>
+                    <p class="muted small">Welcome back</p>
+                    <h2 id="homeName">—</h2>
+                    <p id="homeUpi" class="muted small">—</p>
+                </div>
+                <button id="logoutBtn" class="link-btn">Logout</button>
+            </header>
+
+            <div class="balance-card">
+                <p class="balance-label">Paytm Balance</p>
+                <p id="homeBalance" class="balance-amount">₹0</p>
+            </div>
+
+            <div class="section">
+                <p class="section-title">Quick actions</p>
+                <div class="quick-actions">
+                    <button class="qa" data-action="pay">
+                        <span class="qa-ic">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+                                <rect x="8" y="8" width="8" height="8" rx="1" />
+                            </svg>
+                        </span>
+                        <span>Scan QR</span>
+                    </button>
+
+                    <button class="qa" data-action="pay">
+                        <span class="qa-ic glyph">₹</span>
+                        <span>Pay UPI</span>
+                    </button>
+
+                    <button class="qa" data-action="recharge">
+                        <span class="qa-ic">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+                                <path d="M10.5 18.5h3" />
+                            </svg>
+                        </span>
+                        <span>Recharge</span>
+                    </button>
+
+                    <button class="qa" data-action="bills">
+                        <span class="qa-ic">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M6 3h9l4 4v14H6z" />
+                                <path d="M9 12h6M9 16h4" />
+                            </svg>
+                        </span>
+                        <span>Bills</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-head">
+                    <p class="section-title">Recent transactions</p>
+                    <button id="viewAllBtn" class="link-btn">View all</button>
+                </div>
+                <div id="homeTxns" class="txn-list"></div>
+            </div>
+
+            <p class="footnote">Academic prototype · payments are simulated</p>
+        </section>
+
+        <!-- ============ SCREEN 4: PAY ============ -->
+        <section id="screen-pay" class="screen">
+            <header class="topbar">
+                <button class="back" id="payBack" aria-label="Back">&#8592;</button>
+                <h2>New Payment</h2>
+            </header>
+
+            <div class="pay-wrap">
+                <div class="pay-available">
+                    <span>Available balance</span>
+                    <strong id="payBalance">₹0</strong>
+                </div>
+
+                <label class="field-label" for="upiInput">Pay to (UPI ID)</label>
+                <div class="upi-input-row">
+                    <input id="upiInput" type="text" placeholder="name@bank" autocomplete="off" autocapitalize="none"
+                        spellcheck="false" />
+                    <span id="upiStatus" class="upi-status"></span>
+                </div>
+
+                <p class="hint-inline">Quick pay</p>
+                <div class="quick-payees" id="quickPayees"></div>
+
+                <p class="field-label">Amount</p>
+                <div class="amount-display">
+                    <span>₹</span><span id="amountValue">0</span>
+                </div>
+
+                <p id="payError" class="error"></p>
+
+                <div class="keypad" id="keypad">
+                    <button data-key="1">1</button>
+                    <button data-key="2">2</button>
+                    <button data-key="3">3</button>
+                    <button data-key="4">4</button>
+                    <button data-key="5">5</button>
+                    <button data-key="6">6</button>
+                    <button data-key="7">7</button>
+                    <button data-key="8">8</button>
+                    <button data-key="9">9</button>
+                    <button data-key=".">.</button>
+                    <button data-key="0">0</button>
+                    <button data-key="del" class="key-del">⌫</button>
+                </div>
+
+                <button id="payBtn" class="btn-primary" disabled>Pay ₹0</button>
+            </div>
+        </section>
+
+        <!-- ============ SCREEN 5: SUCCESS ============ -->
+        <section id="screen-success" class="screen">
+            <div class="success-wrap">
+                <div class="success-icon">
+                    <svg viewBox="0 0 52 52" class="checkmark">
+                        <circle cx="26" cy="26" r="25" fill="none" stroke="currentColor" stroke-width="2.5" />
+                        <path fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"
+                            stroke-linejoin="round" d="M14 27l8 8 16-16" />
+                    </svg>
+                </div>
+
+                <h2 class="success-title">Payment Successful</h2>
+                <p class="success-amount" id="successAmount">₹0</p>
+
+                <div class="receipt">
+                    <div class="receipt-row">
+                        <span>To</span>
+                        <strong id="successName">—</strong>
+                    </div>
+                    <div class="receipt-row">
+                        <span>UPI ID</span>
+                        <strong id="successUpi">—</strong>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Transaction ID</span>
+                        <strong id="successTxnId">—</strong>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Date &amp; Time</span>
+                        <strong id="successTime">—</strong>
+                    </div>
+                    <div class="receipt-row">
+                        <span>Status</span>
+                        <strong class="status-ok">Success</strong>
+                    </div>
+                </div>
+
+                <div class="success-actions">
+                    <button id="successDone" class="btn-primary">Done</button>
+                    <button id="successHistory" class="btn-ghost">View in history</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ SCREEN 6: HISTORY ============ -->
+        <section id="screen-history" class="screen">
+            <header class="page-head">
+                <h2>Transaction History</h2>
+                <p class="muted small">All activity on this account</p>
+            </header>
+            <div id="historyTxns" class="txn-list page-list"></div>
+        </section>
+
+        <!-- ============ BOTTOM NAVIGATION ============ -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-tab="home">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M3.5 10.5 12 3l8.5 7.5" />
+                    <path d="M5.5 9.5V20h13V9.5" />
+                </svg>
+                <span>Home</span>
+            </button>
+
+            <button class="nav-pay" data-tab="pay" aria-label="Pay">₹</button>
+
+            <button class="nav-item" data-tab="history">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
+                    <path d="M3 4v4h4" />
+                    <path d="M12 7.5V12l3 2" />
+                </svg>
+                <span>History</span>
+            </button>
+        </nav>
+        <div id="installBanner" class="install-banner" hidden>
+            <div class="ib-text">
+                <strong>Install Paytm Pay</strong>
+                <span>Add to your home screen for the full app</span>
+            </div>
+            <button id="installBtn" class="ib-btn">Install</button>
+            <button id="installClose" class="ib-close" aria-label="Dismiss">&times;</button>
+        </div>
+
+        <div id="toast" class="toast"></div>
     </div>
-    <p class="footnote">Academic prototype · no real payments are processed</p>
-  </section>
-
-  <!-- ============ SCREEN 2: OTP ============ -->
-  <section id="screen-otp" class="screen">
-    <header class="topbar">
-      <button class="back" id="otpBack" aria-label="Back">&#8592;</button>
-      <h2>Verify OTP</h2>
-    </header>
-
-    <div class="otp-wrap">
-      <p class="muted">We sent a 6-digit code to</p>
-      <p id="otpPhone" class="phone-display">+91 ••••••••••</p>
-
-      <div class="otp-row">
-        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
-        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
-        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
-        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
-        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
-        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
-      </div>
-
-      <button id="verifyBtn" class="btn-primary">Verify &amp; Continue</button>
-      <p id="otpMsg" class="error"></p>
-      <p class="hint">Phase 2 will check the code against a real value.
-        For now, press Verify to confirm the screen flow works.</p>
-    </div>
-  </section>
-
-</div>
-<script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
+
 </html>
