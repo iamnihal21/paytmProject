@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#002970" />
+  <title>Paytm Pay</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="phone">
+
+  <!-- ============ SCREEN 1: LOGIN ============ -->
+  <section id="screen-login" class="screen active">
+    <div class="login-wrap">
+      <div class="brand">
+        <div class="brand-mark">P</div>
+        <h1>Paytm Pay</h1>
+        <p>Digital Payments · Prototype</p>
+      </div>
+
+      <label class="field-label" for="phone">Mobile number</label>
+      <div class="phone-row">
+        <span class="prefix">+91</span>
+        <input id="phone" type="tel" inputmode="numeric" maxlength="10"
+               placeholder="10-digit number" autocomplete="tel" />
+      </div>
+
+      <p id="loginError" class="error"></p>
+
+      <button id="loginBtn" class="btn-primary">Continue</button>
+
+      <div class="demo-box">
+        <p class="demo-title">Demo accounts — tap to fill</p>
+        <button class="chip" data-phone="9876543210">9876543210 · Rahul</button>
+        <button class="chip" data-phone="9876543211">9876543211 · Priya</button>
+        <button class="chip" data-phone="9876543212">9876543212 · Amit</button>
+      </div>
+    </div>
+    <p class="footnote">Academic prototype · no real payments are processed</p>
+  </section>
+
+  <!-- ============ SCREEN 2: OTP ============ -->
+  <section id="screen-otp" class="screen">
+    <header class="topbar">
+      <button class="back" id="otpBack" aria-label="Back">&#8592;</button>
+      <h2>Verify OTP</h2>
+    </header>
+
+    <div class="otp-wrap">
+      <p class="muted">We sent a 6-digit code to</p>
+      <p id="otpPhone" class="phone-display">+91 ••••••••••</p>
+
+      <div class="otp-row">
+        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+        <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" />
+      </div>
+
+      <button id="verifyBtn" class="btn-primary">Verify &amp; Continue</button>
+      <p id="otpMsg" class="error"></p>
+      <p class="hint">Phase 2 will check the code against a real value.
+        For now, press Verify to confirm the screen flow works.</p>
+    </div>
+  </section>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
