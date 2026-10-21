@@ -1,22 +1,17 @@
 /* =========================================================
    Paytm Pay — Service Worker
-   Strategy:
-     • install  → pre-cache the app shell
-     • navigate → network-first, fall back to cache (so offline works)
-     • assets   → stale-while-revalidate (fast + self-updating)
-   Bump CACHE_VERSION whenever you change the shell files.
    ========================================================= */
 
-const CACHE_VERSION = "paytm-pay-v1";
+const CACHE_VERSION = "paytm-pay-v3"; // CHANGED TO v3
 
 const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./styles.css",
-  "./app.js",
-  "./manifest.webmanifest",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "/",
+  "/index.html",
+  "/styles.css",
+  "/app.js",
+  "/manifest.webmanifest",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png"
 ];
 
 /* ---------- install: pre-cache ---------- */
@@ -50,7 +45,7 @@ async function networkFirst(request){
     return fresh;
   } catch {
     const cached = await cache.match(request);
-    return cached || cache.match("./index.html");
+    return cached || cache.match("/index.html");
   }
 }
 
@@ -75,7 +70,7 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;   // leave third-party alone
+  if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate"){
     event.respondWith(networkFirst(request));
