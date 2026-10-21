@@ -646,65 +646,63 @@ function toast(message) {
 /* =========================================================
    14. PWA INSTALL PROMPT LOGIC
    ========================================================= */
+/* =========================================================
+   14. PWA INSTALL PROMPT & SERVICE WORKER
+   ========================================================= */
 let deferredPrompt = null;
-const installBanner = document.getElementById("installBanner");
-const installBtn = document.getElementById("installBtn");
-const installClose = document.getElementById("installClose");
-const manualInstallBtn = document.getElementById("manualInstallBtn");
 
 window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
+  e.preventDefault(); 
   deferredPrompt = e;
-
-  if (manualInstallBtn) manualInstallBtn.style.display = "flex";
-
+  console.log("✅ Install Prompt is ready!");
+  
+  const manualBtn = document.getElementById("manualInstallBtn");
+  if (manualBtn) manualBtn.style.display = "flex";
+  
   if (!window.matchMedia("(display-mode: standalone)").matches && !localStorage.getItem("paytm_install_dismissed")) {
-    installBanner.hidden = false;
+    document.getElementById("installBanner").hidden = false;
   }
 });
 
-if (installBtn) {
-  installBtn.addEventListener("click", async () => {
-    if (!deferredPrompt) return;
-    installBanner.hidden = true;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-  });
-}
-
-if (manualInstallBtn) {
-  manualInstallBtn.addEventListener("click", async () => {
-    if (!deferredPrompt) {
-      toast("App is already installed or browser doesn't support it.");
-      return;
-    }
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    manualInstallBtn.style.display = "none";
-  });
-}
-
-if (installClose) {
-  installClose.addEventListener("click", () => {
-    installBanner.hidden = true;
-    localStorage.setItem("paytm_install_dismissed", "1");
-  });
-}
-
-window.addEventListener("appinstalled", () => {
-  installBanner.hidden = true;
-  if (manualInstallBtn) manualInstallBtn.style.display = "none";
-  toast("Paytm Pay installed successfully!");
+document.getElementById("installBtn")?.addEventListener("click", async () => {
+  if (!deferredPrompt) return;
+  document.getElementById("installBanner").hidden = true;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
 });
 
+document.getElementById("manualInstallBtn")?.addEventListener("click", async () => {
+  if (!deferredPrompt) {
+    alert("App is already installed or browser doesn't support it.");
+    return;
+  }
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById("manualInstallBtn").style.display = "none";
+});
+
+document.getElementById("installClose")?.addEventListener("click", () => {
+  document.getElementById("installBanner").hidden = true;
+  localStorage.setItem("paytm_install_dismissed", "1");
+});
+
+// Register Service Worker
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js")
+      .then(() => console.log("✅ Service Worker Registered"))
+      .catch(err => console.error("❌ SW Registration Failed:", err));
+  });
+}
+
 /* INITIAL BOOT */
-(function boot() {
+(function boot(){
   initTheme();
   const session = getSession();
-  if (session) { goToHome(session.phone); return; }
+  if (session){ goToHome(session.phone); return; }
   const pending = localStorage.getItem("paytm_pending");
-  if (pending && USERS[pending]) { openOtpScreen(pending); return; }
+  if (pending && USERS[pending]){ openOtpScreen(pending); return; }
   navigate("screen-login");
 })();
