@@ -2,8 +2,6 @@
    Paytm Pay — Service Worker
    ========================================================= */
 
-const CACHE_VERSION = "paytm-pay-v3"; // CHANGED TO v3
-
 const APP_SHELL = [
   "/",
   "/index.html",
