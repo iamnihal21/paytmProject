@@ -598,7 +598,7 @@ window.addEventListener("appinstalled", () => {
   if (localStorage.getItem("paytm_install_dismissed")) return;
   if (localStorage.getItem("paytm_ios_hint_shown")) return;
 
-  setTimeout(() => {
+  setTimeout (() => {
     toast("Tap Share → Add to Home Screen to install");
     localStorage.setItem("paytm_ios_hint_shown", "1");
   }, 4000);
