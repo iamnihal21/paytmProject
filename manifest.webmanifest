@@ -1,12 +1,8 @@
 {
-  "id": "/",
-  "name": "Paytm Pay — Digital Payments",
-  "short_name": "Paytm Pay",
-  "description": "Academic prototype of a UPI-based digital payments platform.",
+  "name": "Paytm Pay",
+  "short_name": "Paytm",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#f4f6fa",
   "theme_color": "#002970",
   "icons": [
@@ -14,13 +10,13 @@
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
