@@ -1,6 +1,4 @@
-/* =========================================================
-   Paytm Pay — Service Worker
-   ========================================================= */
+const CACHE_VERSION = "paytm-pay-v3";
 
 const APP_SHELL = [
   "/",
@@ -12,7 +10,6 @@ const APP_SHELL = [
   "/icons/icon-512.png"
 ];
 
-/* ---------- install: pre-cache ---------- */
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_VERSION)
@@ -21,7 +18,6 @@ self.addEventListener("install", event => {
   );
 });
 
-/* ---------- activate: drop old caches ---------- */
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
@@ -34,7 +30,6 @@ self.addEventListener("activate", event => {
   );
 });
 
-/* ---------- helpers ---------- */
 async function networkFirst(request){
   const cache = await caches.open(CACHE_VERSION);
   try {
@@ -61,12 +56,9 @@ async function staleWhileRevalidate(request){
   return cached || network;
 }
 
-/* ---------- fetch ---------- */
 self.addEventListener("fetch", event => {
   const { request } = event;
-
   if (request.method !== "GET") return;
-
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
