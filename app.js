@@ -16,6 +16,19 @@ const KNOWN_PAYEES = [
   { name: "Rahul Sharma", upiId: "rahul@paytm", phone: "9876543210" }
 ];
 
+const OPERATORS = {
+  mobile: ["Jio", "Airtel", "Vi", "BSNL"],
+  dth: ["Tata Play", "Airtel DTH", "Dish TV", "Sun Direct"]
+};
+const RECHARGE_AMOUNTS = [199, 239, 299, 399, 499, 719];
+
+const BILL_CATEGORIES = [
+  { id: "electricity", name: "Electricity", icon: "⚡" },
+  { id: "water", name: "Water", icon: "💧" },
+  { id: "gas", name: "Gas", icon: "🔥" },
+  { id: "broadband", name: "Broadband", icon: "🌐" }
+];
+
 /* =========================================================
    2. STORAGE HELPERS & THEME
    ========================================================= */
@@ -48,7 +61,6 @@ function ensureUserState(phone) {
   return state;
 }
 
-/* Theme Toggle */
 function initTheme() {
   const isDark = localStorage.getItem("paytm_theme") === "dark";
   if (isDark) document.documentElement.setAttribute("data-theme", "dark");
@@ -234,8 +246,7 @@ function openProfile() {
   navigate("screen-profile");
 }
 
-/* Transaction Details Modal */
-function viewTxnDetails(txnId) {
+window.viewTxnDetails = function (txnId) {
   const session = requireSession(); if (!session) return;
   const state = ensureUserState(session.phone);
   const t = state.transactions.find(x => x.id === txnId);
@@ -255,7 +266,7 @@ function viewTxnDetails(txnId) {
   document.getElementById("detailTime").textContent = new Date(t.when).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
   navigate("screen-txn-details");
-}
+};
 
 /* =========================================================
    7. PAY SCREEN
@@ -376,6 +387,10 @@ payBtn.addEventListener("click", () => {
    9. SUCCESS SCREEN
    ========================================================= */
 function showSuccess({ txnId, amt, payeeName, upi, when }) {
+  document.getElementById("successTitle").textContent = "Payment Successful";
+  document.getElementById("successToLabel").textContent = "To";
+  document.getElementById("successUpiLabel").textContent = "UPI ID";
+
   document.getElementById("successAmount").textContent = "₹" + amt.toLocaleString("en-IN");
   document.getElementById("successName").textContent = payeeName;
   document.getElementById("successUpi").textContent = upi;
@@ -391,16 +406,10 @@ document.getElementById("addMoneyBtn").addEventListener("click", () => {
   const session = requireSession(); if (!session) return;
   const state = ensureUserState(session.phone);
 
-  // Simulate adding ₹500
   state.balance += 500;
   state.transactions.unshift({
-    id: "ADD" + Date.now(),
-    type: "credit",
-    title: "Bank Transfer",
-    subtitle: "Added to wallet",
-    amount: 500,
-    when: Date.now(),
-    status: "Success"
+    id: "ADD" + Date.now(), type: "credit", title: "Bank Transfer",
+    subtitle: "Added to wallet", amount: 500, when: Date.now(), status: "Success"
   });
   writeJSON("paytm_user_" + session.phone, state);
 
@@ -411,13 +420,201 @@ document.getElementById("addMoneyBtn").addEventListener("click", () => {
 document.getElementById("darkModeToggle").addEventListener("change", toggleTheme);
 
 /* =========================================================
-   11. WIRING & BOOT
+   11. RECHARGE LOGIC
+   ========================================================= */
+let currentRechargeType = "mobile";
+let selectedOperator = "";
+let selectedRechargeAmt = 0;
+
+function openRecharge() {
+  const session = requireSession(); if (!session) return;
+  currentRechargeType = "mobile"; selectedOperator = ""; selectedRechargeAmt = 0;
+  document.getElementById("rechargeNumber").value = "";
+  document.getElementById("rechargeError").textContent = "";
+  document.querySelectorAll(".r-tab").forEach(t => t.classList.toggle("active", t.dataset.type === "mobile"));
+  document.getElementById("rechargeLabel").textContent = "Mobile Number";
+  document.getElementById("rechargeNumber").maxLength = 10;
+  document.getElementById("rechargeNumber").placeholder = "Enter 10-digit number";
+  renderOperators(); renderAmounts(); validateRecharge();
+  navigate("screen-recharge");
+}
+
+function renderOperators() {
+  document.getElementById("operatorGrid").innerHTML = OPERATORS[currentRechargeType].map(op =>
+    `<button class="op-btn ${selectedOperator === op ? 'active' : ''}" onclick="selectOperator('${op}')">${op}</button>`
+  ).join("");
+}
+
+function renderAmounts() {
+  document.getElementById("rechargeAmounts").innerHTML = RECHARGE_AMOUNTS.map(amt =>
+    `<button class="amt-chip ${selectedRechargeAmt === amt ? 'active' : ''}" onclick="selectRechargeAmt(${amt})">₹${amt}</button>`
+  ).join("");
+}
+
+window.selectOperator = function (op) { selectedOperator = op; renderOperators(); validateRecharge(); };
+window.selectRechargeAmt = function (amt) { selectedRechargeAmt = amt; renderAmounts(); validateRecharge(); };
+
+document.querySelectorAll(".r-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    currentRechargeType = tab.dataset.type; selectedOperator = "";
+    document.querySelectorAll(".r-tab").forEach(t => t.classList.remove("active")); tab.classList.add("active");
+    if (currentRechargeType === "mobile") {
+      document.getElementById("rechargeLabel").textContent = "Mobile Number";
+      document.getElementById("rechargeNumber").maxLength = 10;
+      document.getElementById("rechargeNumber").placeholder = "Enter 10-digit number";
+    } else {
+      document.getElementById("rechargeLabel").textContent = "Subscriber ID";
+      document.getElementById("rechargeNumber").maxLength = 12;
+      document.getElementById("rechargeNumber").placeholder = "Enter Subscriber ID";
+    }
+    renderOperators(); validateRecharge();
+  });
+});
+
+document.getElementById("rechargeNumber").addEventListener("input", validateRecharge);
+
+function validateRecharge() {
+  const session = getSession(); if (!session) return;
+  const num = document.getElementById("rechargeNumber").value.trim();
+  const btn = document.getElementById("rechargeProceedBtn");
+  const err = document.getElementById("rechargeError");
+  err.textContent = "";
+  let valid = true;
+  if (num.length < 10) valid = false;
+  if (!selectedOperator) valid = false;
+  if (selectedRechargeAmt <= 0) valid = false;
+  const state = ensureUserState(session.phone);
+  if (selectedRechargeAmt > state.balance) {
+    valid = false;
+    if (num.length >= 10) err.textContent = "Insufficient balance for this recharge";
+  }
+  btn.disabled = !valid;
+  btn.textContent = selectedRechargeAmt > 0 ? `Pay ₹${selectedRechargeAmt}` : "Proceed to Pay";
+}
+
+document.getElementById("rechargeProceedBtn").addEventListener("click", () => {
+  const session = requireSession(); if (!session) return;
+  const state = ensureUserState(session.phone);
+  const number = document.getElementById("rechargeNumber").value.trim();
+  const amt = selectedRechargeAmt, operator = selectedOperator;
+  if (amt > state.balance) { document.getElementById("rechargeError").textContent = "Insufficient balance"; return; }
+
+  const txnId = "RCH" + Math.floor(100000000 + Math.random() * 900000000);
+  state.balance = +(state.balance - amt).toFixed(2);
+  const title = `${operator} ${currentRechargeType === "mobile" ? "Prepaid" : "DTH"}`;
+  state.transactions.unshift({ id: txnId, type: "debit", title: title, subtitle: `Recharge for ${number}`, amount: amt, when: Date.now(), status: "Success" });
+  writeJSON("paytm_user_" + session.phone, state);
+
+  document.getElementById("successTitle").textContent = "Recharge Successful";
+  document.getElementById("successToLabel").textContent = "Operator";
+  document.getElementById("successUpiLabel").textContent = "Number";
+  document.getElementById("successAmount").textContent = "₹" + amt.toLocaleString("en-IN");
+  document.getElementById("successName").textContent = operator;
+  document.getElementById("successUpi").textContent = number;
+  document.getElementById("successTxnId").textContent = txnId;
+  document.getElementById("successTime").textContent = new Date().toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  navigate("screen-success");
+});
+
+document.getElementById("rechargeBack").addEventListener("click", () => { const s = requireSession(); if (s) goToHome(s.phone); });
+
+/* =========================================================
+   12. BILLS LOGIC
+   ========================================================= */
+let currentBillType = "electricity";
+let fetchedBillData = null;
+
+function openBills() {
+  const session = requireSession(); if (!session) return;
+  currentBillType = "electricity"; fetchedBillData = null;
+  document.getElementById("consumerNumber").value = "";
+  document.getElementById("consumerLabel").textContent = "Consumer Number";
+  document.getElementById("billDetailsSection").style.display = "none";
+  document.getElementById("billInputSection").style.display = "block";
+  document.getElementById("billError").textContent = "";
+  renderBillCategories(); validateBillInput();
+  navigate("screen-bills");
+}
+
+function renderBillCategories() {
+  document.getElementById("billCategories").innerHTML = BILL_CATEGORIES.map(cat => `
+    <button class="cat-btn ${currentBillType === cat.id ? 'active' : ''}" onclick="selectBillCategory('${cat.id}')">
+      <div class="cat-icon">${cat.icon}</div><span>${cat.name}</span>
+    </button>`).join("");
+}
+
+window.selectBillCategory = function (id) {
+  currentBillType = id; renderBillCategories();
+  document.getElementById("billDetailsSection").style.display = "none";
+  document.getElementById("billInputSection").style.display = "block";
+  validateBillInput();
+};
+
+document.getElementById("consumerNumber").addEventListener("input", validateBillInput);
+
+function validateBillInput() {
+  document.getElementById("fetchBillBtn").disabled = document.getElementById("consumerNumber").value.trim().length < 6;
+}
+
+document.getElementById("fetchBillBtn").addEventListener("click", () => {
+  const btn = document.getElementById("fetchBillBtn");
+  const originalText = btn.textContent;
+  const session = requireSession(); if (!session) return;
+  btn.innerHTML = '<span class="spinner"></span> Fetching...'; btn.disabled = true;
+
+  setTimeout(() => {
+    const amt = Math.floor(400 + Math.random() * 1100);
+    fetchedBillData = { name: USERS[session.phone].name, dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }), amount: amt };
+    document.getElementById("billName").textContent = fetchedBillData.name;
+    document.getElementById("billDueDate").textContent = fetchedBillData.dueDate;
+    document.getElementById("billAmount").textContent = "₹" + fetchedBillData.amount.toLocaleString("en-IN");
+    document.getElementById("payBillBtn").textContent = `Pay ₹${fetchedBillData.amount}`;
+    btn.textContent = originalText; validateBillInput();
+    document.getElementById("billInputSection").style.display = "none";
+    document.getElementById("billDetailsSection").style.display = "block";
+  }, 1200);
+});
+
+document.getElementById("cancelBillBtn").addEventListener("click", () => {
+  document.getElementById("billDetailsSection").style.display = "none";
+  document.getElementById("billInputSection").style.display = "block";
+  fetchedBillData = null;
+});
+
+document.getElementById("payBillBtn").addEventListener("click", () => {
+  const session = requireSession(); if (!session || !fetchedBillData) return;
+  const state = ensureUserState(session.phone);
+  const amt = fetchedBillData.amount;
+
+  if (amt > state.balance) { document.getElementById("billError").textContent = "Insufficient balance to pay this bill."; return; }
+
+  state.balance = +(state.balance - amt).toFixed(2);
+  const txnId = "BIL" + Math.floor(100000000 + Math.random() * 900000000);
+  const catName = BILL_CATEGORIES.find(c => c.id === currentBillType).name;
+  state.transactions.unshift({ id: txnId, type: "debit", title: `${catName} Bill`, subtitle: `Consumer No: ${document.getElementById("consumerNumber").value.trim()}`, amount: amt, when: Date.now(), status: "Success" });
+  writeJSON("paytm_user_" + session.phone, state);
+
+  document.getElementById("successTitle").textContent = "Bill Paid Successfully";
+  document.getElementById("successToLabel").textContent = "Board";
+  document.getElementById("successUpiLabel").textContent = "Consumer No";
+  document.getElementById("successAmount").textContent = "₹" + amt.toLocaleString("en-IN");
+  document.getElementById("successName").textContent = `${catName} Board`;
+  document.getElementById("successUpi").textContent = document.getElementById("consumerNumber").value.trim();
+  document.getElementById("successTxnId").textContent = txnId;
+  document.getElementById("successTime").textContent = new Date().toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  navigate("screen-success");
+});
+
+document.getElementById("billsBack").addEventListener("click", () => { const s = requireSession(); if (s) goToHome(s.phone); });
+
+/* =========================================================
+   13. WIRING & BOOT
    ========================================================= */
 document.getElementById("successDone").addEventListener("click", () => { const s = requireSession(); if (s) goToHome(s.phone); });
 document.getElementById("successHistory").addEventListener("click", openHistory);
 document.getElementById("payBack").addEventListener("click", () => { const s = requireSession(); if (s) goToHome(s.phone); });
 document.getElementById("viewAllBtn").addEventListener("click", openHistory);
-document.getElementById("txnBack").addEventListener("click", openHistory); // Go back to history
+document.getElementById("txnBack").addEventListener("click", openHistory);
 document.getElementById("downloadReceiptBtn").addEventListener("click", () => toast("Receipt downloaded (Demo)"));
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -437,6 +634,7 @@ document.querySelectorAll(".qa, .nav-item").forEach(btn => {
     else if (tab === "profile") openProfile();
   });
 });
+
 document.querySelector(".nav-pay").addEventListener("click", openPay);
 
 function toast(message) {
@@ -445,17 +643,22 @@ function toast(message) {
   clearTimeout(toast._timer); toast._timer = setTimeout(() => el.classList.remove("show"), 2500);
 }
 
-/* Install Prompt (PWA) */
-/* Install Prompt (PWA) */
+/* =========================================================
+   14. PWA INSTALL PROMPT LOGIC
+   ========================================================= */
 let deferredPrompt = null;
 const installBanner = document.getElementById("installBanner");
 const installBtn = document.getElementById("installBtn");
 const installClose = document.getElementById("installClose");
+const manualInstallBtn = document.getElementById("manualInstallBtn");
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  if (!window.matchMedia("(display-mode: standalone)").matches) {
+
+  if (manualInstallBtn) manualInstallBtn.style.display = "flex";
+
+  if (!window.matchMedia("(display-mode: standalone)").matches && !localStorage.getItem("paytm_install_dismissed")) {
     installBanner.hidden = false;
   }
 });
@@ -470,296 +673,38 @@ if (installBtn) {
   });
 }
 
+if (manualInstallBtn) {
+  manualInstallBtn.addEventListener("click", async () => {
+    if (!deferredPrompt) {
+      toast("App is already installed or browser doesn't support it.");
+      return;
+    }
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    manualInstallBtn.style.display = "none";
+  });
+}
+
 if (installClose) {
   installClose.addEventListener("click", () => {
     installBanner.hidden = true;
+    localStorage.setItem("paytm_install_dismissed", "1");
   });
 }
 
-/* =========================================================
-   12. RECHARGE LOGIC
-   ========================================================= */
-let currentRechargeType = "mobile";
-let selectedOperator = "";
-let selectedRechargeAmt = 0;
-
-const OPERATORS = {
-  mobile: ["Jio", "Airtel", "Vi", "BSNL"],
-  dth: ["Tata Play", "Airtel DTH", "Dish TV", "Sun Direct"]
-};
-
-const RECHARGE_AMOUNTS = [199, 239, 299, 399, 499, 719];
-
-function openRecharge() {
-  const session = requireSession(); if (!session) return;
-  
-  // Reset state
-  currentRechargeType = "mobile";
-  selectedOperator = "";
-  selectedRechargeAmt = 0;
-  document.getElementById("rechargeNumber").value = "";
-  document.getElementById("rechargeError").textContent = "";
-  document.querySelectorAll(".r-tab").forEach(t => t.classList.toggle("active", t.dataset.type === "mobile"));
-  document.getElementById("rechargeLabel").textContent = "Mobile Number";
-  document.getElementById("rechargeNumber").maxLength = 10;
-  document.getElementById("rechargeNumber").placeholder = "Enter 10-digit number";
-  
-  renderOperators();
-  renderAmounts();
-  validateRecharge();
-  
-  navigate("screen-recharge");
-}
-
-function renderOperators() {
-  const grid = document.getElementById("operatorGrid");
-  grid.innerHTML = OPERATORS[currentRechargeType].map(op => 
-    `<button class="op-btn ${selectedOperator === op ? 'active' : ''}" onclick="selectOperator('${op}')">${op}</button>`
-  ).join("");
-}
-
-function renderAmounts() {
-  const container = document.getElementById("rechargeAmounts");
-  container.innerHTML = RECHARGE_AMOUNTS.map(amt => 
-    `<button class="amt-chip ${selectedRechargeAmt === amt ? 'active' : ''}" onclick="selectRechargeAmt(${amt})">₹${amt}</button>`
-  ).join("");
-}
-
-window.selectOperator = function(op) {
-  selectedOperator = op;
-  renderOperators();
-  validateRecharge();
-};
-
-window.selectRechargeAmt = function(amt) {
-  selectedRechargeAmt = amt;
-  renderAmounts();
-  validateRecharge();
-};
-
-document.querySelectorAll(".r-tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    currentRechargeType = tab.dataset.type;
-    selectedOperator = "";
-    
-    document.querySelectorAll(".r-tab").forEach(t => t.classList.remove("active"));
-    tab.classList.add("active");
-    
-    if (currentRechargeType === "mobile") {
-      document.getElementById("rechargeLabel").textContent = "Mobile Number";
-      document.getElementById("rechargeNumber").maxLength = 10;
-      document.getElementById("rechargeNumber").placeholder = "Enter 10-digit number";
-    } else {
-      document.getElementById("rechargeLabel").textContent = "Subscriber ID";
-      document.getElementById("rechargeNumber").maxLength = 12;
-      document.getElementById("rechargeNumber").placeholder = "Enter Subscriber ID";
-    }
-    
-    renderOperators();
-    validateRecharge();
-  });
+window.addEventListener("appinstalled", () => {
+  installBanner.hidden = true;
+  if (manualInstallBtn) manualInstallBtn.style.display = "none";
+  toast("Paytm Pay installed successfully!");
 });
 
-document.getElementById("rechargeNumber").addEventListener("input", validateRecharge);
-
-function validateRecharge() {
-  const session = getSession(); if (!session) return;
-  const num = document.getElementById("rechargeNumber").value.trim();
-  const btn = document.getElementById("rechargeProceedBtn");
-  const err = document.getElementById("rechargeError");
-  
-  err.textContent = "";
-  let valid = true;
-  
-  if (num.length < 10) valid = false;
-  if (!selectedOperator) valid = false;
-  if (selectedRechargeAmt <= 0) valid = false;
-  
-  const state = ensureUserState(session.phone);
-  if (selectedRechargeAmt > state.balance) {
-    valid = false;
-    if (num.length >= 10) err.textContent = "Insufficient balance for this recharge";
-  }
-
-  btn.disabled = !valid;
-  if (selectedRechargeAmt > 0) btn.textContent = `Pay ₹${selectedRechargeAmt}`;
-  else btn.textContent = "Proceed to Pay";
-}
-
-document.getElementById("rechargeProceedBtn").addEventListener("click", () => {
-  const session = requireSession(); if (!session) return;
-  const state = ensureUserState(session.phone);
-  
-  const number = document.getElementById("rechargeNumber").value.trim();
-  const amt = selectedRechargeAmt;
-  const operator = selectedOperator;
-  
-  if (amt > state.balance) {
-    document.getElementById("rechargeError").textContent = "Insufficient balance";
-    return;
-  }
-
-  // Deduct and save
-  const txnId = "RCH" + Math.floor(100000000 + Math.random() * 900000000);
-  state.balance = +(state.balance - amt).toFixed(2);
-  
-  const title = `${operator} ${currentRechargeType === "mobile" ? "Prepaid" : "DTH"}`;
-  const subtitle = `Recharge for ${number}`;
-  
-  state.transactions.unshift({
-    id: txnId, type: "debit", title: title, subtitle: subtitle, amount: amt, when: Date.now(), status: "Success"
-  });
-  
-  writeJSON("paytm_user_" + session.phone, state);
-
-  // Update Success Screen
-  document.querySelector(".success-title").textContent = "Recharge Successful";
-  document.getElementById("successAmount").textContent = "₹" + amt.toLocaleString("en-IN");
-  document.getElementById("successName").textContent = operator;
-  document.getElementById("successUpi").textContent = number; // Reusing the UPI label for the number
-  document.getElementById("successTxnId").textContent = txnId;
-  document.getElementById("successTime").textContent = new Date().toLocaleString("en-IN", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
-  
-  navigate("screen-success");
-});
-
-// Reset title when paying via UPI so it doesn't say "Recharge Successful"
-const originalShowSuccess = showSuccess;
-window.showSuccess = function(data) {
-  document.querySelector(".success-title").textContent = "Payment Successful";
-  originalShowSuccess(data);
-};
-
-document.getElementById("rechargeBack").addEventListener("click", () => { const s = requireSession(); if (s) goToHome(s.phone); });
-
-/* =========================================================
-   13. BILLS LOGIC
-   ========================================================= */
-let currentBillType = "electricity";
-let fetchedBillData = null;
-
-const BILL_CATEGORIES = [
-  { id: "electricity", name: "Electricity", icon: "⚡" },
-  { id: "water", name: "Water", icon: "💧" },
-  { id: "gas", name: "Gas", icon: "🔥" },
-  { id: "broadband", name: "Broadband", icon: "🌐" }
-];
-
-function openBills() {
-  const session = requireSession(); if (!session) return;
-  
-  currentBillType = "electricity";
-  fetchedBillData = null;
-  
-  document.getElementById("consumerNumber").value = "";
-  document.getElementById("consumerLabel").textContent = "Consumer Number";
-  document.getElementById("billDetailsSection").style.display = "none";
-  document.getElementById("billInputSection").style.display = "block";
-  document.getElementById("billError").textContent = "";
-  
-  renderBillCategories();
-  validateBillInput();
-  navigate("screen-bills");
-}
-
-function renderBillCategories() {
-  const grid = document.getElementById("billCategories");
-  grid.innerHTML = BILL_CATEGORIES.map(cat => `
-    <button class="cat-btn ${currentBillType === cat.id ? 'active' : ''}" onclick="selectBillCategory('${cat.id}')">
-      <div class="cat-icon">${cat.icon}</div>
-      <span>${cat.name}</span>
-    </button>
-  `).join("");
-}
-
-window.selectBillCategory = function(id) {
-  currentBillType = id;
-  renderBillCategories();
-  document.getElementById("billDetailsSection").style.display = "none";
-  document.getElementById("billInputSection").style.display = "block";
-  validateBillInput();
-};
-
-document.getElementById("consumerNumber").addEventListener("input", validateBillInput);
-
-function validateBillInput() {
-  const num = document.getElementById("consumerNumber").value.trim();
-  const btn = document.getElementById("fetchBillBtn");
-  btn.disabled = num.length < 6; // Require at least 6 digits
-}
-
-// Simulate fetching a bill from an external server
-document.getElementById("fetchBillBtn").addEventListener("click", () => {
-  const btn = document.getElementById("fetchBillBtn");
-  const originalText = btn.textContent;
-  const session = requireSession(); if (!session) return;
-  
-  btn.innerHTML = '<span class="spinner"></span> Fetching...';
-  btn.disabled = true;
-
-  setTimeout(() => {
-    // Generate a mock bill
-    const amt = Math.floor(400 + Math.random() * 1100); // Random between 400 and 1500
-    fetchedBillData = {
-      name: USERS[session.phone].name, // Assuming the user is paying their own bill
-      dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" }),
-      amount: amt
-    };
-
-    document.getElementById("billName").textContent = fetchedBillData.name;
-    document.getElementById("billDueDate").textContent = fetchedBillData.dueDate;
-    document.getElementById("billAmount").textContent = "₹" + fetchedBillData.amount.toLocaleString("en-IN");
-    
-    const payBtn = document.getElementById("payBillBtn");
-    payBtn.textContent = `Pay ₹${fetchedBillData.amount}`;
-
-    btn.textContent = originalText;
-    validateBillInput(); // Reset button state
-    
-    document.getElementById("billInputSection").style.display = "none";
-    document.getElementById("billDetailsSection").style.display = "block";
-  }, 1200); // 1.2s delay to simulate network request
-});
-
-document.getElementById("cancelBillBtn").addEventListener("click", () => {
-  document.getElementById("billDetailsSection").style.display = "none";
-  document.getElementById("billInputSection").style.display = "block";
-  fetchedBillData = null;
-});
-
-document.getElementById("payBillBtn").addEventListener("click", () => {
-  const session = requireSession(); if (!session || !fetchedBillData) return;
-  const state = ensureUserState(session.phone);
-  const err = document.getElementById("billError");
-  const amt = fetchedBillData.amount;
-
-  if (amt > state.balance) {
-    err.textContent = "Insufficient balance to pay this bill.";
-    return;
-  }
-
-  // Deduct balance
-  state.balance = +(state.balance - amt).toFixed(2);
-  const txnId = "BIL" + Math.floor(100000000 + Math.random() * 900000000);
-  const catName = BILL_CATEGORIES.find(c => c.id === currentBillType).name;
-
-  state.transactions.unshift({
-    id: txnId, type: "debit", title: `${catName} Bill`, 
-    subtitle: `Consumer No: ${document.getElementById("consumerNumber").value.trim()}`, 
-    amount: amt, when: Date.now(), status: "Success"
-  });
-  
-  writeJSON("paytm_user_" + session.phone, state);
-
-  // Update Success Screen
-  document.querySelector(".success-title").textContent = "Bill Paid Successfully";
-  document.getElementById("successAmount").textContent = "₹" + amt.toLocaleString("en-IN");
-  document.getElementById("successName").textContent = `${catName} Board`;
-  document.getElementById("successUpi").textContent = "Consumer: " + document.getElementById("consumerNumber").value.trim();
-  document.getElementById("successTxnId").textContent = txnId;
-  document.getElementById("successTime").textContent = new Date().toLocaleString("en-IN", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
-  
-  navigate("screen-success");
-});
-
-document.getElementById("billsBack").addEventListener("click", () => { const s = requireSession(); if (s) goToHome(s.phone); });
+/* INITIAL BOOT */
+(function boot() {
+  initTheme();
+  const session = getSession();
+  if (session) { goToHome(session.phone); return; }
+  const pending = localStorage.getItem("paytm_pending");
+  if (pending && USERS[pending]) { openOtpScreen(pending); return; }
+  navigate("screen-login");
+})();
